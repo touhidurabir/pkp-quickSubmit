@@ -35,8 +35,10 @@
 
 		this.parent($form, options);
 		this.callbackWrapper(this.updateSchedulePublicationDiv_());
+		
+		$('#continuousPublicationOption').hide();
 
-		$('#locale, #sectionId').change(function() {
+		$('#locale, #sectionId').on('change', function() {
 			// Trick the form not to validate missing data before submitting
 			$('input,textarea,select').filter('[required]').each(function() {
 				$(this).removeAttr('required');
@@ -64,7 +66,7 @@
 	$.pkp.plugins.importexport.quickSubmit.js.QuickSubmitFormHandler.prototype.
 			updateSchedulePublicationDiv_ = function() {
 
-		$('input[type=radio][name=articleStatus]').change(function() {
+		$('input[type=radio][name=articleStatus]').on('change', function() {
 			if ($(this).is(':checked') && this.value == '0') {
 				$('#schedulePublicationDiv').hide();
 			} else if ($(this).is(':checked') && this.value == '1') {
@@ -76,17 +78,20 @@
 
 		$('input[type=radio][name=articleStatus]').trigger('change');
 
-		$('#issueId').change(function() {
+		$('#issueId').on('change', function() {
 			var val, array;
 			val = /** @type {string} */ $('#issuesPublicationDates').val();
 			array = JSON.parse(val);
+
 			if (!array[$('#issueId').val()]) {
 				$('#schedulingInformationDatePublished').hide();
+				$('#continuousPublicationOption').hide();
 			} else {
 				$('input[name="datePublished"]').
 						datepicker('setDate', array[$('#issueId').val()]);
 				$('#ui-datepicker-div').hide();
 				$('#schedulingInformationDatePublished').show();
+				$('#continuousPublicationOption').show();
 			}
 		});
 

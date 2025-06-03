@@ -18,6 +18,7 @@ use APP\core\Application;
 use APP\facades\Repo;
 use APP\journal\Journal;
 use APP\plugins\importexport\quickSubmit\classes\form\SubmissionMetadataForm;
+use APP\plugins\importexport\quickSubmit\enums\IssueSelectionOptionCategory;
 use APP\publication\Publication;
 use APP\submission\Submission;
 use APP\template\TemplateManager;
@@ -27,7 +28,6 @@ use PKP\context\Context;
 use PKP\core\Core;
 use PKP\core\PKPRequest;
 use PKP\core\PKPString;
-use PKP\db\DAORegistry;
 use PKP\facades\Locale;
 use PKP\form\Form;
 use PKP\form\validation\FormValidatorUrl;
@@ -259,10 +259,11 @@ class QuickSubmitForm extends Form
         }
 
         // Validate Issue if Published is selected
-        // if articleStatus == 1 => should have issueId
+        // if articleStatus set to 1, it can be issue as continuous publication
+        // or have valid issue selected
         if ($this->getData('articleStatus') == 1) {
-            if ($this->getData('issueId') <= 0) {
-                $this->addError('issueId', __('plugins.importexport.quickSubmit.selectIssue'));
+            if (in_array($this->getData('issueId'), IssueSelectionOptionCategory::unselectableOptions())) {
+                $this->addError('issueId', __('publication.invalidIssue'));
                 $this->errorFields['issueId'] = 1;
 
                 return false;
@@ -373,7 +374,8 @@ class QuickSubmitForm extends Form
             'sectionId',
             'submissionId',
             'articleStatus',
-            'locale'
+            'locale',
+            'continuousPublication',
         ]);
     }
 
@@ -443,13 +445,19 @@ class QuickSubmitForm extends Form
         }
 
         if ($this->getData('articleStatus') == 1) {
+            $publication->setData('continuousPublication', $this->getData('continuousPublication') ?? false);
             $publication->setData('copyrightYear', $this->getData('copyrightYear'));
             $publication->setData('copyrightHolder', $this->getData('copyrightHolder'), null);
             $publication->setData('licenseUrl', $this->getData('licenseUrl'));
             $publication->setData('pages', $this->getData('pages'));
             $publication->setData('datePublished', $this->getData('datePublished'));
             $publication->setData('accessStatus', Submission::ARTICLE_ACCESS_ISSUE_DEFAULT);
-            $publication->setData('issueId', (int) $this->getData('issueId'));
+            $publication->setData(
+                'issueId',
+                (int)$this->getData('issueId') === IssueSelectionOptionCategory::NO_ISSUE->value
+                    ? null
+                    : (int)$this->getData('issueId')
+            );
 
             // If other articles in this issue have a custom sequence, put this at the end
             $otherSubmissionsInSection = Repo::submission()
@@ -491,8 +499,8 @@ class QuickSubmitForm extends Form
         $issuesPublicationDates = [];
         $issueOptions = [];
         $journalId = $journal->getId();
-
-        $issueOptions[-1] = '------    ' . __('editor.issues.futureIssues') . '    ------';
+        $issueOptions[IssueSelectionOptionCategory::NO_ISSUE->value] = IssueSelectionOptionCategory::NO_ISSUE->getLabel();
+        $issueOptions[IssueSelectionOptionCategory::FUTURE_ISSUES->value] = IssueSelectionOptionCategory::FUTURE_ISSUES->getLabel();
         $issues = Repo::issue()
             ->getCollector()
             ->filterByContextIds([$journalId])
@@ -504,7 +512,7 @@ class QuickSubmitForm extends Form
             $issueOptions[$issue->getId()] = $issue->getIssueIdentification();
             $issuesPublicationDates[$issue->getId()] = date(PKPString::convertStrftimeFormat(Config::getVar('general', 'date_format_short')), strtotime(Core::getCurrentDate()));
         }
-        $issueOptions[-2] = '------    ' . __('editor.issues.currentIssue') . '    ------';
+        $issueOptions[IssueSelectionOptionCategory::CURRENT_ISSUE->value] = IssueSelectionOptionCategory::CURRENT_ISSUE->getLabel();
         $issues = array_values(
             Repo::issue()
                 ->getCollector()
@@ -520,7 +528,7 @@ class QuickSubmitForm extends Form
             $issuesPublicationDates[$issues[0]->getId()] = date(PKPString::convertStrftimeFormat(Config::getVar('general', 'date_format_short')), strtotime($issues[0]->getDatePublished()));
             array_shift($issues);
         }
-        $issueOptions[-3] = '------    ' . __('editor.issues.backIssues') . '    ------';
+        $issueOptions[IssueSelectionOptionCategory::BACK_ISSUES->value] = IssueSelectionOptionCategory::BACK_ISSUES->getLabel();
         foreach ($issues as $issue) {
             $issueOptions[$issue->getId()] = $issue->getIssueIdentification();
             $issuesPublicationDates[$issue->getId()] = date(PKPString::convertStrftimeFormat(Config::getVar('general', 'date_format_short')), strtotime($issues[0]->getDatePublished()));

@@ -87,6 +87,12 @@
 							{/fbvFormSection}
 						{/fbvFormArea}
 
+						{fbvFormArea id="continuousPublicationOption" title="manager.setup.continuousPublication"}
+							{fbvFormSection for="continuousPublication" list="true"}
+								{fbvElement type="checkbox" name="continuousPublication" id="continuousPublication" checked=false label="publication.publish.continuousPublication.label" translate="true"}
+							{/fbvFormSection}
+						{/fbvFormArea}
+
 						{fbvFormArea id="pagesInformation" title="editor.issues.pages"}
 							{fbvFormSection for="customExtras"}
 								{fbvElement type="text" id="pages" label="editor.issues.pages" value=$pages inline=true size=$fbvStyles.size.MEDIUM}
